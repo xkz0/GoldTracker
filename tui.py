@@ -67,12 +67,19 @@ def save_config(config):
         json.dump(config, file, indent=4)
 
 def display_inventory(stdscr, inventory, currency):
+    """Display inventory with proper screen handling"""
+    stdscr.nodelay(0)  # Disable nodelay mode while in inventory
     stdscr.clear()
     stdscr.addstr(0, 0, "Inventory:")
     for idx, item in enumerate(inventory, start=1):
         stdscr.addstr(idx, 0, f"ID: {item['id']}, Name: {item['name']}, Price: {item['price']:.2f} {currency}, Weight: {item['weight']:.2f}g, Date: {item['date']}, Gold Price: {item['gold_price']:.2f} {currency}")
+    stdscr.addstr(len(inventory) + 2, 0, "Press any key to return to main menu")
     stdscr.refresh()
     stdscr.getch()
+    
+    # Clear screen before returning to prevent artifacts
+    stdscr.clear()
+    stdscr.refresh()
 
 def remove_entry(stdscr, inventory):
     stdscr.clear()
@@ -250,20 +257,16 @@ def main(stdscr):
             stdscr.addstr(start_y + 8, 0, "Options: (v)iew inventory, (r)emove entry, (a)dd more gold, (c)hange settings, (e)xit", curses.color_pair(7))
         except curses.error:
             pass
-            
+
+        # Only refresh once per loop
         stdscr.refresh()
         
-        # Handle input
-        try:
-            key = stdscr.getch()
-        except curses.error:
-            continue
+        # Wait for input without nodelay mode
+        key = stdscr.getch()
             
-        # Handle key presses
         if key == ord('v'):
-            stdscr.nodelay(0)  # Disable nodelay for menu
             display_inventory(stdscr, inventory, currency)
-            stdscr.nodelay(1)  # Re-enable nodelay for animation
+            # No need to toggle nodelay mode anymore
         elif key == ord('r'):
             inventory = remove_entry(stdscr, inventory)
         elif key == ord('a'):
