@@ -75,7 +75,7 @@ def remove_entry(stdscr, inventory):
     return inventory
 
 def change_api_key(stdscr, config):
-    new_api_key = get_user_input(stdscr, "Enter the new API key: ")
+    new_api_key = get_user_input(stdscr, "Enter the new metalpriceapi.com API key: ")
     config['api_key'] = new_api_key
     save_config(config)
     stdscr.addstr(2, 0, "API key updated. Press any key to continue.")
@@ -85,6 +85,9 @@ def change_api_key(stdscr, config):
 
 def main(stdscr):
     config = load_config()
+    if 'api_key' not in config or len(config['api_key']) != 32:
+        config['api_key'] = get_user_input(stdscr, "Enter your 32-character metalpriceapi.com API key: ")
+        save_config(config)
     api_key = config.get("api_key", "")
     
     inventory = load_inventory()
