@@ -10,8 +10,11 @@ This is still very much a work in progress, and I clearly need to work on adding
 
 ## Setup
 
-Just download the three Python files, and in the console type:
-
+Just download the three Python files and requirements.txt,then run:
+```bash
+# pip install -r requirements.txt
+```
+Then in the console type:
 ```bash
 # python3 tui.py
 ```
