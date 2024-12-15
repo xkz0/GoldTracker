@@ -18,7 +18,7 @@ So I scrape the Royal Mints website for their prices on the Gold Britannias 1oz,
 
 ## Setup
 
-Just download the three Python files and requirements.txt,then run:
+Just download the three Python files and "requirements.txt" , then run:
 ```bash
 pip install -r requirements.txt
 ```
@@ -28,7 +28,7 @@ python3 tui.py
 ```
 This will generate two files, config.json and inventory.json
 the inventory will contain your purchases.
-The config.json file just contains your metalpriceapi.com API key which you get prompted to enter upon first run.
+The config.json file just contains your metalpriceapi.com API key which you get prompted to enter upon first run, and your currency.
 From there, just enter in your gold purchases following the on screen prompts.
 
 
