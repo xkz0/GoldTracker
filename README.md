@@ -30,3 +30,11 @@ This will generate two files, config.json and inventory.json
 the inventory will contain your purchases.
 The config.json file just contains your metalpriceapi.com API key which you get prompted to enter upon first run.
 From there, just enter in your gold purchases following the on screen prompts.
+
+
+## To Do
+```
+1. Implement other currencies
+2. Implement other metals
+3. Implement other Coins, or at least the facility to easily do this yourself
+```
