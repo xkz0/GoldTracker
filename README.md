@@ -10,7 +10,7 @@ This is still very much a work in progress, and I clearly need to work on adding
 
 The way this works is it polls metalpriceapi.com for the days price of gold with:
 ```
-https://api.metalpriceapi.com/v1/latest?api_key={api_key}&base=GBP&currencies=XAU
+(https://api.metalpriceapi.com/v1/latest?api_key={api_key}&base=USD&currencies=XAU,{currency})
 ```
 I chose MetalPriceAPI because youi get 100 free API requests per month, and we're only using one per day, even if you close and re-open the application, it stores the price data for that day (API only updates once per day on free tier).
 This is great for metal prices but not for specific coins etc.
