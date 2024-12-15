@@ -21,15 +21,31 @@ def get_cgt_free_coin_price(url):
         raise ValueError("Product data not found on the page")
 
 if __name__ == "__main__":
-    urls = {
+    britannia_urls = {
         "1oz": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/britannia-2025-1oz-gold-bullion-coin/",
         "1/2oz": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/britannia-2024-half-oz-gold-bullion-coin-in-blister/",
         "1/4oz": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/britannia-2025-14oz-gold-bullion-coin-in-blister/"
     }
     
-    for size, url in urls.items():
+    sovereign_urls = {
+        "double": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/the-double-sovereign-2024-gold-bullion-coin-in-blister/",
+        "full": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/the-sovereign-2024-gold-bullion-coin-in-blister/",
+        "half": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/the-half-sovereign-2024-gold-bullion-coin-in-blister/",
+        "quarter": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/the-quarter-sovereign-2024-gold-bullion-coin-in-blister/"
+    }
+    
+    # Test Britannias
+    for size, url in britannia_urls.items():
         try:
             price = get_cgt_free_coin_price(url)
-            print(f"Current price of {size} CGT-Free coin: £{price:.2f}")
+            print(f"Current price of {size} Britannia: £{price:.2f}")
         except Exception as e:
-            print(f"Error fetching price for {size} coin: {e}")
+            print(f"Error fetching price for {size} Britannia: {e}")
+    
+    # Test Sovereigns
+    for size, url in sovereign_urls.items():
+        try:
+            price = get_cgt_free_coin_price(url)
+            print(f"Current price of {size} Sovereign: £{price:.2f}")
+        except Exception as e:
+            print(f"Error fetching price for {size} Sovereign: {e}")
