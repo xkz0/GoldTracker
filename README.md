@@ -38,3 +38,6 @@ From there, just enter in your gold purchases following the on screen prompts.
 2. Implement other metals
 3. Implement other Coins, or at least the facility to easily do this yourself
 ```
+
+## Disclaimer
+I am not claiming that this information is accurate or should be used to make financial decisions off of. Always do your own due diligence.
