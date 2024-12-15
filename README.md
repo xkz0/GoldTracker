@@ -12,11 +12,11 @@ This is still very much a work in progress, and I clearly need to work on adding
 
 Just download the three Python files and requirements.txt,then run:
 ```bash
-# pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 Then in the console type:
 ```bash
-# python3 tui.py
+python3 tui.py
 ```
 This will generate two files, config.json and inventory.json
 the inventory will contain your purchases.
