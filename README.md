@@ -1,6 +1,6 @@
 # Crabs Gold Tracker
 
-![Image]([image_url_here](https://github.com/user-attachments/assets/bd88dafe-4ab7-4e09-abd0-3feaed3aa122)) 
+![Image](https://github.com/user-attachments/assets/bd88dafe-4ab7-4e09-abd0-3feaed3aa122) 
 
 This simple TUI (Text User Interface) enables you to keep track of your current gold investments. I wanted this to be a privacy-conscious investment tracker that has no frills; it literally tells you your P/L, the current price of gold, and the value of your investments.
 
