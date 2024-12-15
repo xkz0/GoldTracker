@@ -8,6 +8,12 @@ The reason I wanted to make this was that many open source/self-hosted solutions
 
 This is still very much a work in progress, and I clearly need to work on adding other metals/coins as well as probably other API providers.
 
+The way this works is it polls metalpriceapi.com for the days price of gold with:
+https://api.metalpriceapi.com/v1/latest?api_key={api_key}&base=GBP&currencies=XAU
+I chose MetalPriceAPI because youi get 100 free API requests per month, and we're only using one per day, even if you close and re-open the application, it stores the price data for that day (API only updates once per day on free tier).
+This is great for metal prices but not for specific coins etc.
+So I scrape the Royal Mints website for their prices on the Gold Britannias 1oz, 1/2oz, and 1/4oz.
+
 ## Setup
 
 Just download the three Python files and requirements.txt,then run:
