@@ -1,5 +1,7 @@
 import curses
 import json
+import math
+import time
 from datetime import datetime, timedelta
 from getprice import get_gold_price, get_exchange_rate  # Add get_exchange_rate
 from scrape import get_cgt_free_coin_price
@@ -141,6 +143,14 @@ def change_currency(stdscr, config, api_key, inventory):
         stdscr.getch()
         return config, inventory, None, None
 
+def display_header(stdscr, text_lines, color_pair):
+    """Display ASCII art header with gold color"""
+    for y, line in enumerate(text_lines):
+        try:
+            stdscr.addstr(y, 0, line, color_pair | curses.A_REVERSE)
+        except curses.error:
+            pass
+
 def main(stdscr):
     config = load_config()
     # Prompt for currency if not set
@@ -214,31 +224,46 @@ def main(stdscr):
     
     while True:
         stdscr.clear()
-        for i, line in enumerate(ascii_art):
-            stdscr.addstr(i, 0, line, curses.color_pair(8))
-        stdscr.addstr(9, 0, f"Current Price of Gold per Troy Ounce at {readable_date} in {currency}: {gold_price:.2f}", curses.color_pair(8))
-        total_weight = sum(item['weight'] for item in inventory)
-        total_weight_oz = total_weight / 31.1035  # Convert grams to troy ounces
-        total_value = sum((item['weight'] / 31.1035) * gold_price for item in inventory)
-        total_purchase_price = sum(item['price'] for item in inventory)
-        profit_loss = total_value - total_purchase_price
         
-        cgt_free_value = sum((item['weight'] / 31.1035) * gold_price for item in inventory if item['is_cgt_free'])
-        non_cgt_free_value = total_value - cgt_free_value
+        # Display ASCII art header
+        display_header(stdscr, ascii_art, curses.color_pair(8))
         
-        stdscr.addstr(10, 0, f"Total weight of gold: {total_weight:.2f} grams ({total_weight_oz:.2f} troy ounces)", curses.color_pair(1))
-        stdscr.addstr(11, 0, f"Total value of gold holdings: {total_value:.2f} {currency}", curses.color_pair(2))
-        stdscr.addstr(12, 0, f"Total purchase price: {total_purchase_price:.2f} {currency}", curses.color_pair(3))
-        stdscr.addstr(13, 0, f"Profit/Loss: {profit_loss:.2f} {currency}", curses.color_pair(4))
-        stdscr.addstr(14, 0, f"Value of CGT-Free coins: {cgt_free_value:.2f} {currency}", curses.color_pair(5))
-        stdscr.addstr(15, 0, f"Value of non-CGT-Free: {non_cgt_free_value:.2f} {currency}", curses.color_pair(6))
-        stdscr.addstr(17, 0, "Options: (v)iew inventory, (r)emove entry, (a)dd more gold, (c)hange settings, (e)xit", curses.color_pair(7))
+        # Display status information
+        start_y = len(ascii_art) + 2  # Space after header
+        try:
+            stdscr.addstr(start_y, 0, f"Current Price of Gold per Troy Ounce at {readable_date} in {currency}: {gold_price:.2f}", curses.color_pair(8))
+            total_weight = sum(item['weight'] for item in inventory)
+            total_weight_oz = total_weight / 31.1035
+            total_value = sum((item['weight'] / 31.1035) * gold_price for item in inventory)
+            total_purchase_price = sum(item['price'] for item in inventory)
+            profit_loss = total_value - total_purchase_price
+            
+            cgt_free_value = sum((item['weight'] / 31.1035) * gold_price for item in inventory if item['is_cgt_free'])
+            non_cgt_free_value = total_value - cgt_free_value
+            
+            stdscr.addstr(start_y + 1, 0, f"Total weight of gold: {total_weight:.2f} grams ({total_weight_oz:.2f} troy ounces)", curses.color_pair(1))
+            stdscr.addstr(start_y + 2, 0, f"Total value of gold holdings: {total_value:.2f} {currency}", curses.color_pair(2))
+            stdscr.addstr(start_y + 3, 0, f"Total purchase price: {total_purchase_price:.2f} {currency}", curses.color_pair(3))
+            stdscr.addstr(start_y + 4, 0, f"Profit/Loss: {profit_loss:.2f} {currency}", curses.color_pair(4))
+            stdscr.addstr(start_y + 5, 0, f"Value of CGT-Free coins: {cgt_free_value:.2f} {currency}", curses.color_pair(5))
+            stdscr.addstr(start_y + 6, 0, f"Value of non-CGT-Free: {non_cgt_free_value:.2f} {currency}", curses.color_pair(6))
+            stdscr.addstr(start_y + 8, 0, "Options: (v)iew inventory, (r)emove entry, (a)dd more gold, (c)hange settings, (e)xit", curses.color_pair(7))
+        except curses.error:
+            pass
+            
         stdscr.refresh()
         
-        key = stdscr.getch()
-        
+        # Handle input
+        try:
+            key = stdscr.getch()
+        except curses.error:
+            continue
+            
+        # Handle key presses
         if key == ord('v'):
+            stdscr.nodelay(0)  # Disable nodelay for menu
             display_inventory(stdscr, inventory, currency)
+            stdscr.nodelay(1)  # Re-enable nodelay for animation
         elif key == ord('r'):
             inventory = remove_entry(stdscr, inventory)
         elif key == ord('a'):
