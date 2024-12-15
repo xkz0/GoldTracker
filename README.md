@@ -1,6 +1,6 @@
 # Crabs Gold Tracker
 
-![Image](image_url_here) <!-- Replace with the actual image URL -->
+![Image]([image_url_here](https://github.com/user-attachments/assets/bd88dafe-4ab7-4e09-abd0-3feaed3aa122)) 
 
 This simple TUI (Text User Interface) enables you to keep track of your current gold investments. I wanted this to be a privacy-conscious investment tracker that has no frills; it literally tells you your P/L, the current price of gold, and the value of your investments.
 
@@ -14,3 +14,8 @@ Just download the three Python files, and in the console type:
 
 ```bash
 # python3 tui.py
+```
+This will generate two files, config.json and inventory.json
+the inventory will contain your purchases.
+The config.json file just contains your metalpriceapi.com API key which you get prompted to enter upon first run.
+From there, just enter in your gold purchases following the on screen prompts.
