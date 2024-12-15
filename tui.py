@@ -16,6 +16,18 @@ def get_user_input(stdscr, prompt):
     curses.noecho()
     return user_input
 
+def get_menu_choice(stdscr, menu_text, input_prompt):
+    """Display a menu and get user choice without clearing screen"""
+    stdscr.clear()
+    for i, line in enumerate(menu_text):
+        stdscr.addstr(i, 0, line)
+    stdscr.addstr(len(menu_text) + 1, 0, input_prompt)
+    stdscr.refresh()
+    curses.echo()
+    choice = stdscr.getstr(len(menu_text) + 2, 0).decode('utf-8').strip()
+    curses.noecho()
+    return choice
+
 def load_inventory():
     try:
         with open(INVENTORY_FILE, 'r') as file:
@@ -118,7 +130,7 @@ def change_currency(stdscr, config, api_key, inventory):
         # Update the config with the new currency
         config['currency'] = new_currency
         save_config(config)
-        stdscr.addstr(2, 0, f"Currency changed to {new_currency}. Prices updated.")
+        stdscr.addstr(2, 0, f"Currency changed to {new_currency}. Prices updated. Press Enter to return to main menu.")
         stdscr.refresh()
         stdscr.getch()
         return config, inventory, gold_price, timestamp
@@ -234,28 +246,59 @@ def main(stdscr):
             is_cgt_free = get_user_input(stdscr, "Is this a CGT-Free coin? (y/n): ").strip().lower()
             
             if is_cgt_free == 'y':
-                weight_option = get_user_input(stdscr, "Select the weight (1oz, 1/2oz, 1/4oz): ").strip().lower()
-                urls = {
-                    "1oz": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/britannia-2025-1oz-gold-bullion-coin/",
-                    "1/2oz": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/britannia-2024-half-oz-gold-bullion-coin-in-blister/",
-                    "1/4oz": "https://www.royalmint.com/invest/bullion/bullion-coins/gold-coins/britannia-2025-14oz-gold-bullion-coin-in-blister/"
-                }
-                if weight_option in urls:
-                    try:
-                        current_price = get_cgt_free_coin_price(urls[weight_option])
-                        stdscr.addstr(2, 0, f"Current price of {weight_option} CGT-Free coin: £{current_price:.2f}")
-                        stdscr.refresh()
-                        stdscr.getch()
-                    except Exception as e:
-                        stdscr.addstr(2, 0, f"Error fetching price for {weight_option} coin: {e}")
+                coin_type = get_menu_choice(stdscr, 
+                    ["Select coin type:",
+                     "(1) Sovereign",
+                     "(2) Britannia"],
+                    "Enter choice (1-2): ")
+                
+                if coin_type == '1':  # Sovereign
+                    weight_options = {
+                        "1": ("double", 15.97, "Double Sovereign"),
+                        "2": ("full", 7.98, "Full Sovereign"),
+                        "3": ("half", 3.99, "Half Sovereign"),
+                        "4": ("quarter", 1.997, "Quarter Sovereign")
+                    }
+                    
+                    weight_choice = get_menu_choice(stdscr,
+                        ["Select sovereign size:",
+                         "(1) Double Sovereign - 15.97g",
+                         "(2) Full Sovereign - 7.98g",
+                         "(3) Half Sovereign - 3.99g",
+                         "(4) Quarter Sovereign - 1.997g"],
+                        "Enter your choice (1-4): ")
+                    
+                    if weight_choice not in weight_options:
+                        stdscr.addstr(8, 0, "Invalid choice. Press any key to continue.")
                         stdscr.refresh()
                         stdscr.getch()
                         continue
-                else:
-                    stdscr.addstr(2, 0, "Invalid weight option. Please select 1oz, 1/2oz, or 1/4oz.")
-                    stdscr.refresh()
-                    stdscr.getch()
-                    continue
+                    
+                    size_key, purchase_weight, name = weight_options[weight_choice]
+                    
+                    
+                elif coin_type == '2':  # Britannia
+                    weight_options = {
+                        "1": ("1oz", 31.1035, "1oz Britannia"),
+                        "2": ("1/2oz", 15.55175, "1/2oz Britannia"),
+                        "3": ("1/4oz", 7.775875, "1/4oz Britannia")
+                    }
+                    
+                    weight_choice = get_menu_choice(stdscr,
+                        ["Select Britannia size:",
+                         "(1) 1oz Britannia - 31.1035g",
+                         "(2) 1/2oz Britannia - 15.55175g",
+                         "(3) 1/4oz Britannia - 7.775875g"],
+                        "Enter your choice (1-3): ")
+                    
+                    if weight_choice not in weight_options:
+                        stdscr.addstr(6, 0, "Invalid choice. Press any key to continue.")
+                        stdscr.refresh()
+                        stdscr.getch()
+                        continue
+                    
+                    size_key, purchase_weight, name = weight_options[weight_choice]
+
             else:
                 weight_input = get_user_input(stdscr, f"Enter the weight for {purchase_name} (e.g., 20g or 1oz): ").strip().lower()
                 if weight_input.endswith('g'):
@@ -270,13 +313,6 @@ def main(stdscr):
             
             purchase_price = float(get_user_input(stdscr, f"Enter the purchase price ({currency}) for {purchase_name}: "))
             purchase_date = get_user_input(stdscr, f"Enter the purchase date for {purchase_name} (YYYY-MM-DD): ")
-            
-            if is_cgt_free == 'y':
-                purchase_weight = {
-                    "1oz": 31.1035,
-                    "1/2oz": 15.55175,
-                    "1/4oz": 7.775875
-                }[weight_option]
             
             inventory.append({
                 'id': purchase_id,
