@@ -3,7 +3,7 @@ import json
 import math
 import time
 from datetime import datetime, timedelta
-from getprice import get_gold_price, get_exchange_rate  # Add get_exchange_rate
+from getprice import get_gold_price, get_exchange_rate, get_historical_gold_price  # Add get_exchange_rate
 from scrape import get_cgt_free_coin_price
 
 INVENTORY_FILE = "inventory.json"
@@ -119,9 +119,12 @@ def change_currency(stdscr, config, api_key, inventory):
     try:
         # Get exchange rate from old currency to new currency
         exchange_rate = get_exchange_rate(api_key, old_currency, new_currency)
-        # Update purchase prices in the inventory
+        
+        # Update all monetary values in inventory
         for item in inventory:
             item['price'] = item['price'] * exchange_rate
+            if 'historical_value' in item:
+                item['historical_value'] = item['historical_value'] * exchange_rate
         
         # Fetch new gold price in the new currency
         try:
@@ -130,19 +133,24 @@ def change_currency(stdscr, config, api_key, inventory):
                 item['gold_price'] = gold_price
                 item['gold_price_timestamp'] = datetime.fromtimestamp(timestamp).isoformat()
             save_inventory(inventory)
+            
+            stdscr.addstr(2, 0, "Converting historical values...")
+            stdscr.refresh()
+            
+            # Update the config with the new currency
+            config['currency'] = new_currency
+            save_config(config)
+            
+            stdscr.addstr(3, 0, f"Currency changed to {new_currency}. All values updated. Press Enter to return to main menu.")
+            stdscr.refresh()
+            stdscr.getch()
+            return config, inventory, gold_price, timestamp
+
         except Exception as e:
             stdscr.addstr(2, 0, f"Error fetching new gold price: {e}")
             stdscr.refresh()
             stdscr.getch()
             return config, inventory, None, None
-
-        # Update the config with the new currency
-        config['currency'] = new_currency
-        save_config(config)
-        stdscr.addstr(2, 0, f"Currency changed to {new_currency}. Prices updated. Press Enter to return to main menu.")
-        stdscr.refresh()
-        stdscr.getch()
-        return config, inventory, gold_price, timestamp
 
     except Exception as e:
         stdscr.addstr(2, 0, f"Error changing currency: {e}")
@@ -157,6 +165,161 @@ def display_header(stdscr, text_lines, color_pair):
             stdscr.addstr(y, 0, line, color_pair | curses.A_REVERSE)
         except curses.error:
             pass
+
+def calculate_timeline_data(stdscr, inventory, api_key, currency):
+    """Calculate historical values for graphing with loading indicator"""
+    sorted_inventory = sorted(inventory, key=lambda x: datetime.fromisoformat(x['date']))
+    timeline = []
+    running_cost = 0
+    running_weight = 0
+    items_to_update = []
+    
+    stdscr.addstr(2, 0, "Processing historical data...")
+    stdscr.refresh()
+    
+    try:
+        for i, item in enumerate(sorted_inventory):
+            date = datetime.fromisoformat(item['date'])
+            running_cost += item['price']
+            running_weight += item['weight']
+            
+            # Check if we need to fetch historical price
+            if 'historical_value' not in item:
+                try:
+                    stdscr.addstr(3, 0, f"Fetching historical price for entry {i+1} of {len(sorted_inventory)}...")
+                    stdscr.refresh()
+                    
+                    historical_price = get_historical_gold_price(api_key, date.strftime('%Y-%m-%d'), currency)
+                    item['historical_value'] = historical_price
+                    items_to_update.append(item)
+                except Exception as e:
+                    stdscr.addstr(4, 0, f"Warning: Could not get price for {date.strftime('%Y-%m-%d')}")
+                    stdscr.refresh()
+                    time.sleep(1)
+                    continue
+            
+            value = (running_weight / 31.1035) * item['historical_value']
+            timeline.append({
+                'date': date,
+                'total_value': value,
+                'total_cost': running_cost,
+                'profit_loss': value - running_cost
+            })
+        
+        # Update inventory with new historical values
+        if items_to_update:
+            save_inventory(inventory)
+        
+        return timeline
+    except Exception as e:
+        stdscr.addstr(4, 0, f"Error: {str(e)}")
+        stdscr.refresh()
+        time.sleep(2)
+        return None
+
+def draw_graph(stdscr, timeline, start_row, height=15, width=70):
+    """Draw ASCII graph of portfolio value over time"""
+    if not timeline:
+        return
+    
+    # Calculate ranges for scaling
+    max_value = max(max(t['total_value'] for t in timeline), 
+                   max(t['total_cost'] for t in timeline))
+    min_value = min(min(t['total_value'] for t in timeline), 
+                   min(t['total_cost'] for t in timeline))
+    value_range = max_value - min_value
+    
+    # Calculate value markers
+    value_step = value_range / 4
+    value_markers = [min_value + (value_step * i) for i in range(5)]
+    
+    # Calculate date markers
+    date_range = (timeline[-1]['date'] - timeline[0]['date']).days
+    date_step = date_range / 4
+    date_markers = [
+        timeline[0]['date'] + timedelta(days=int(date_step * i))
+        for i in range(5)
+    ]
+    
+    # Calculate scales
+    y_scale = (height - 3) / value_range
+    
+    try:
+        # Draw axes
+        for y in range(height):
+            stdscr.addstr(start_row + y, 5, "│")
+        stdscr.addstr(start_row + height - 1, 5, "└" + "─" * (width - 6))
+        
+        # Draw y-axis markers and labels
+        for i, value in enumerate(value_markers):
+            y = start_row + height - 2 - int((value - min_value) * y_scale)
+            stdscr.addstr(y, 4, "┤")
+            stdscr.addstr(y, 0, f"{value:,.0f}")
+        
+        # Draw x-axis markers and labels
+        for i, date in enumerate(date_markers):
+            x = int(5 + (i * (width - 10) / 4))
+            stdscr.addstr(start_row + height - 1, x, "┬")
+            stdscr.addstr(start_row + height, x - 4, date.strftime('%Y-%m'))
+        
+        # Plot lines with proper date scaling
+        last_value_x = last_value_y = last_pl_x = last_pl_y = None
+        
+        for point in timeline:
+            # Calculate x position based on actual date
+            days_from_start = (point['date'] - timeline[0]['date']).days
+            x = int(5 + (days_from_start * (width - 10) / date_range))
+            
+            # Plot total value line
+            y = start_row + height - 2 - int((point['total_value'] - min_value) * y_scale)
+            if last_value_x is not None:
+                # Draw connecting line
+                for fill_x in range(last_value_x + 1, x):
+                    fill_y = int(last_value_y + (y - last_value_y) * (fill_x - last_value_x) / (x - last_value_x))
+                    stdscr.addstr(fill_y, fill_x, "─", curses.color_pair(2))
+            stdscr.addstr(y, x, "●", curses.color_pair(2))
+            last_value_x, last_value_y = x, y
+            
+            # Plot profit/loss line
+            y = start_row + height - 2 - int((point['profit_loss'] - min_value) * y_scale)
+            if last_pl_x is not None:
+                # Draw connecting line
+                for fill_x in range(last_pl_x + 1, x):
+                    fill_y = int(last_pl_y + (y - last_pl_y) * (fill_x - last_pl_x) / (x - last_pl_x))
+                    stdscr.addstr(fill_y, fill_x, "┄", curses.color_pair(4))
+            stdscr.addstr(y, x, "○", curses.color_pair(4))
+            last_pl_x, last_pl_y = x, y
+        
+        # Draw legend
+        stdscr.addstr(start_row, width - 25, "●━ Total Value", curses.color_pair(2))
+        stdscr.addstr(start_row + 1, width - 25, "○┄ Profit/Loss", curses.color_pair(4))
+        
+    except curses.error:
+        pass
+
+def display_graph(stdscr, inventory, api_key, currency):
+    """Display the portfolio value graph screen"""
+    stdscr.clear()
+    stdscr.addstr(0, 0, "Portfolio Value Over Time", curses.A_BOLD)
+    
+    if not inventory:
+        stdscr.addstr(2, 0, "No inventory data available")
+        stdscr.refresh()
+        stdscr.getch()
+        return
+        
+    timeline = calculate_timeline_data(stdscr, inventory, api_key, currency)
+    
+    if timeline:
+        stdscr.clear()
+        stdscr.addstr(0, 0, "Portfolio Value Over Time", curses.A_BOLD)
+        draw_graph(stdscr, timeline, 2)
+        stdscr.addstr(20, 0, "Press any key to return to main menu")
+    else:
+        stdscr.addstr(2, 0, "Could not generate graph. Press any key to return.")
+    
+    stdscr.refresh()
+    stdscr.getch()
 
 def main(stdscr):
     config = load_config()
@@ -216,7 +379,7 @@ def main(stdscr):
     curses.init_pair(5, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(6, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
-    curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # Gold color
+    curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # Gold colour
     
     ascii_art = [
         "  /$$$$$$                     /$$                        /$$$$$$            /$$       /$$       /$$$$$$$$                           /$$                          ",
@@ -254,19 +417,17 @@ def main(stdscr):
             stdscr.addstr(start_y + 4, 0, f"Profit/Loss: {profit_loss:.2f} {currency}", curses.color_pair(4))
             stdscr.addstr(start_y + 5, 0, f"Value of CGT-Free coins: {cgt_free_value:.2f} {currency}", curses.color_pair(5))
             stdscr.addstr(start_y + 6, 0, f"Value of non-CGT-Free: {non_cgt_free_value:.2f} {currency}", curses.color_pair(6))
-            stdscr.addstr(start_y + 8, 0, "Options: (v)iew inventory, (r)emove entry, (a)dd more gold, (c)hange settings, (e)xit", curses.color_pair(7))
+            stdscr.addstr(start_y + 8, 0, "Options: (v)iew inventory, (r)emove entry, (a)dd more gold, (c)hange settings, (g)raph, (e)xit", curses.color_pair(7))
         except curses.error:
             pass
 
         # Only refresh once per loop
         stdscr.refresh()
         
-        # Wait for input without nodelay mode
         key = stdscr.getch()
             
         if key == ord('v'):
             display_inventory(stdscr, inventory, currency)
-            # No need to toggle nodelay mode anymore
         elif key == ord('r'):
             inventory = remove_entry(stdscr, inventory)
         elif key == ord('a'):
@@ -375,6 +536,8 @@ def main(stdscr):
                 currency = config.get("currency", "USD")
             elif option == ord('3'):
                 continue
+        elif key == ord('g'):
+            display_graph(stdscr, inventory, api_key, currency)
         elif key == ord('e'):
             break
 
