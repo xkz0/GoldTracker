@@ -49,6 +49,21 @@ def get_exchange_rate(api_key, from_currency, to_currency):
     else:
         raise ValueError(f"Invalid API response: Missing rate for {to_currency}.")
 
+def get_historical_gold_price(api_key, date, currency):
+    """Get historical gold price for a specific date with timeout"""
+    url = f"https://api.metalpriceapi.com/v1/{date}?api_key={api_key}&base={currency}&currencies=XAU"
+    try:
+        response = requests.get(url, timeout=10)  # Add 10 second timeout
+        if response.status_code == 200:
+            data = response.json()
+            if 'rates' in data and 'XAU' in data['rates']:
+                return 1 / data['rates']['XAU']
+        raise Exception(f"Failed to get historical price: {response.text}")
+    except requests.exceptions.Timeout:
+        raise Exception("Request timed out")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Network error: {str(e)}")
+
 if __name__ == "__main__":
     config = load_config()
     api_key = config.get("api_key", "")
